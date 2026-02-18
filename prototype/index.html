@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids Coding Adventure - Learn Programming Through Play</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Blockly Core -->
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🚀 Coding Adventure</h1>
+                <div class="lesson-info">
+                    <span class="lesson-title">Lesson 1: First Steps</span>
+                    <span class="lesson-progress">1 of 3</span>
+                </div>
+                <div class="header-controls">
+                    <button id="showCodeBtn" class="btn btn-secondary">Show Code</button>
+                    <button id="hintBtn" class="btn btn-hint">💡 Hint</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Game Area -->
+            <section class="game-section">
+                <div class="instructions-panel">
+                    <div class="character-avatar">🤖</div>
+                    <div class="instruction-text">
+                        <h3 id="missionTitle">Move the robot to the star!</h3>
+                        <p id="missionDescription">Drag movement blocks to help the robot reach its goal.</p>
+                    </div>
+                </div>
+
+                <div class="game-canvas-container">
+                    <canvas id="gameCanvas" width="400" height="400"></canvas>
+                    <div id="executionOverlay" class="execution-overlay"></div>
+                </div>
+
+                <div class="game-controls">
+                    <button id="runBtn" class="btn btn-primary btn-large">
+                        <span class="btn-icon">▶️</span>
+                        <span class="btn-text">Run</span>
+                    </button>
+                    <button id="stepBtn" class="btn btn-secondary">
+                        <span class="btn-icon">👣</span>
+                        <span class="btn-text">Step</span>
+                    </button>
+                    <button id="resetBtn" class="btn btn-secondary">
+                        <span class="btn-icon">🔄</span>
+                        <span class="btn-text">Reset</span>
+                    </button>
+                </div>
+
+                <div id="feedbackPanel" class="feedback-panel"></div>
+            </section>
+
+            <!-- Code Area -->
+            <section class="code-section">
+                <!-- Blockly Workspace -->
+                <div class="blockly-container">
+                    <div id="blocklyArea">
+                        <div id="blocklyDiv"></div>
+                    </div>
+                </div>
+
+                <!-- Generated Code View (Hidden by default) -->
+                <div id="codeView" class="code-view" style="display: none;">
+                    <div class="code-header">
+                        <h4>Generated JavaScript Code</h4>
+                        <button id="hideCodeBtn" class="btn btn-small">Hide Code</button>
+                    </div>
+                    <pre id="generatedCode" class="code-display"></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toolbox Definition -->
+    <xml xmlns="https://developers.google.com/blockly/xml" id="toolbox" style="display: none">
+        <category name="Movement" colour="#5ba55b">
+            <block type="move_forward"></block>
+            <block type="turn_right"></block>
+            <block type="turn_left"></block>
+        </category>
+        <category name="Loops" colour="#5ba5a5">
+            <block type="controls_repeat_ext">
+                <value name="TIMES">
+                    <shadow type="math_number">
+                        <field name="NUM">3</field>
+                    </shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Logic" colour="#5b80a5">
+            <block type="controls_if"></block>
+            <block type="logic_compare"></block>
+        </category>
+    </xml>
+
+    <!-- Load custom blocks and game logic -->
+    <script src="js/interpreter.js"></script>
+    <script>
+        // Global variables
+        let workspace;
+        let game;
+
+        // Define custom blocks immediately
+        function defineCustomBlocks() {
+            console.log('Defining custom movement blocks...');
+
+            // Move Forward Block
+            Blockly.Blocks['move_forward'] = {
+                init: function() {
+                    this.appendDummyInput()
+                        .appendField("move forward");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour(120);
+                    this.setTooltip("Move the character forward one step");
+                    this.setHelpUrl("");
+                }
+            };
+
+            // Turn Right Block
+            Blockly.Blocks['turn_right'] = {
+                init: function() {
+                    this.appendDummyInput()
+                        .appendField("turn right");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour(120);
+                    this.setTooltip("Turn the character 90 degrees to the right");
+                    this.setHelpUrl("");
+                }
+            };
+
+            // Turn Left Block
+            Blockly.Blocks['turn_left'] = {
+                init: function() {
+                    this.appendDummyInput()
+                        .appendField("turn left");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour(120);
+                    this.setTooltip("Turn the character 90 degrees to the left");
+                    this.setHelpUrl("");
+                }
+            };
+
+            console.log('Movement blocks defined successfully');
+        }
+
+        // Define JavaScript generators
+        function defineJavaScriptGenerators() {
+            console.log('Defining JavaScript generators...');
+
+            Blockly.JavaScript['move_forward'] = function(block) {
+                return 'moveForward();\n';
+            };
+
+            Blockly.JavaScript['turn_right'] = function(block) {
+                return 'turnRight();\n';
+            };
+
+            Blockly.JavaScript['turn_left'] = function(block) {
+                return 'turnLeft();\n';
+            };
+
+            console.log('JavaScript generators defined successfully');
+        }
+
+        // Initialize the application
+        function initializeApp() {
+            console.log('Initializing Coding Adventure app...');
+
+            // Define custom blocks and generators
+            defineCustomBlocks();
+            defineJavaScriptGenerators();
+
+            // Verify registration
+            console.log('Block verification:', {
+                move_forward: typeof Blockly.Blocks['move_forward'],
+                turn_right: typeof Blockly.Blocks['turn_right'],
+                turn_left: typeof Blockly.Blocks['turn_left']
+            });
+
+            console.log('Generator verification:', {
+                move_forward: typeof Blockly.JavaScript['move_forward'],
+                turn_right: typeof Blockly.JavaScript['turn_right'],
+                turn_left: typeof Blockly.JavaScript['turn_left']
+            });
+
+            // Initialize Blockly workspace
+            workspace = Blockly.inject('blocklyDiv', {
+                toolbox: document.getElementById('toolbox'),
+                collapse: true,
+                comments: true,
+                disable: true,
+                maxBlocks: Infinity,
+                trashcan: true,
+                horizontalLayout: false,
+                toolboxPosition: 'start',
+                css: true,
+                media: 'https://blockly-demo.appspot.com/static/media/',
+                rtl: false,
+                scrollbars: true,
+                sounds: true,
+                oneBasedIndex: true,
+                zoom: {
+                    controls: true,
+                    wheel: true,
+                    startScale: 1.0,
+                    maxScale: 3,
+                    minScale: 0.3,
+                    scaleSpeed: 1.2
+                }
+            });
+
+            console.log('Blockly workspace initialized:', workspace);
+
+            // Initialize game
+            game = new GameEngine();
+
+            // Set up event listeners
+            setupEventListeners();
+
+            console.log('App initialization complete!');
+        }
+
+        // Set up all event listeners
+        function setupEventListeners() {
+            // Run button
+            document.getElementById('runBtn').addEventListener('click', function() {
+                console.log('Run button clicked');
+                runProgram();
+            });
+
+            // Step button
+            document.getElementById('stepBtn').addEventListener('click', function() {
+                console.log('Step button clicked');
+                stepProgram();
+            });
+
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                console.log('Reset button clicked');
+                game.reset();
+            });
+
+            // Show/Hide code buttons
+            document.getElementById('showCodeBtn').addEventListener('click', showGeneratedCode);
+            document.getElementById('hideCodeBtn').addEventListener('click', hideGeneratedCode);
+
+            // Hint button
+            document.getElementById('hintBtn').addEventListener('click', showHint);
+
+            // Workspace change listener for live code generation
+            workspace.addChangeListener(function(event) {
+                if (event.type === Blockly.Events.BLOCK_MOVE ||
+                    event.type === Blockly.Events.BLOCK_CREATE ||
+                    event.type === Blockly.Events.BLOCK_DELETE) {
+                    updateGeneratedCode();
+                }
+            });
+        }
+
+        // Run the complete program
+        function runProgram() {
+            try {
+                console.log('Generating code from workspace...');
+
+                const code = Blockly.JavaScript.workspaceToCode(workspace);
+                console.log('Generated code:', code);
+
+                if (!code.trim()) {
+                    showFeedback('Add some blocks to create your program!', 'info');
+                    return;
+                }
+
+                updateGeneratedCode();
+                game.executeProgram(code);
+
+            } catch (error) {
+                console.error('Error running program:', error);
+                showFeedback('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Step through program one command at a time
+        function stepProgram() {
+            try {
+                const code = Blockly.JavaScript.workspaceToCode(workspace);
+                if (!code.trim()) {
+                    showFeedback('Add some blocks first!', 'info');
+                    return;
+                }
+
+                game.stepProgram(code);
+            } catch (error) {
+                console.error('Error stepping program:', error);
+                showFeedback('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Show generated JavaScript code
+        function showGeneratedCode() {
+            updateGeneratedCode();
+            document.getElementById('codeView').style.display = 'block';
+            document.getElementById('showCodeBtn').style.display = 'none';
+        }
+
+        // Hide generated code view
+        function hideGeneratedCode() {
+            document.getElementById('codeView').style.display = 'none';
+            document.getElementById('showCodeBtn').style.display = 'inline-block';
+        }
+
+        // Update the generated code display
+        function updateGeneratedCode() {
+            try {
+                const code = Blockly.JavaScript.workspaceToCode(workspace);
+                document.getElementById('generatedCode').textContent = code || '// Drag blocks to see code here';
+            } catch (error) {
+                document.getElementById('generatedCode').textContent = '// Error generating code: ' + error.message;
+            }
+        }
+
+        // Show hint for current lesson
+        function showHint() {
+            const hints = [
+                "Try dragging a 'move forward' block to the workspace",
+                "Connect blocks by snapping them together",
+                "You need 3 'move forward' blocks to reach the star",
+                "Click the 'Run' button to test your solution"
+            ];
+
+            const hint = hints[Math.floor(Math.random() * hints.length)];
+            showFeedback('💡 Hint: ' + hint, 'hint');
+        }
+
+        // Show feedback message
+        function showFeedback(message, type = 'info') {
+            const panel = document.getElementById('feedbackPanel');
+            panel.textContent = message;
+            panel.className = `feedback-panel ${type}`;
+
+            // Auto-hide after 3 seconds for hints and info
+            if (type !== 'error') {
+                setTimeout(() => {
+                    panel.textContent = '';
+                    panel.className = 'feedback-panel';
+                }, 3000);
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>

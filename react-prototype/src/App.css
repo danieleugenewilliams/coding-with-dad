@@ -1,0 +1,36 @@
+/* Additional app-specific styles */
+
+.app-container {
+  min-height: 100vh;
+}
+
+/* Ensure proper height for Blockly workspace */
+.blockly-workspace-container {
+  min-height: 400px;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 1024px) {
+  main {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* Custom scrollbar for code viewer */
+.code-viewer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.code-viewer::-webkit-scrollbar-track {
+  background: #2d3748;
+}
+
+.code-viewer::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+.code-viewer::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
