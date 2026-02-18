@@ -12,7 +12,7 @@ import { CodeViewer } from './components/CodeViewer';
 
 import { GameEngine } from './engine/GameEngine';
 import { lessons, getCurrentLesson } from './data/lessons';
-import { GameState, Feedback, Lesson } from './types';
+import type { GameState, Feedback, Lesson } from './types';
 
 import './App.css';
 
@@ -155,6 +155,18 @@ function App() {
     setFeedback(null);
   }, []);
 
+  const handlePrevLesson = useCallback(() => {
+    if (currentLessonId > 1) {
+      setCurrentLessonId(currentLessonId - 1);
+    }
+  }, [currentLessonId]);
+
+  const handleNextLesson = useCallback(() => {
+    if (currentLessonId < lessons.length) {
+      setCurrentLessonId(currentLessonId + 1);
+    }
+  }, [currentLessonId]);
+
   if (!currentLesson) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -175,6 +187,8 @@ function App() {
         showCode={showCode}
         onToggleCode={handleToggleCode}
         onShowHint={handleShowHint}
+        onPrevLesson={handlePrevLesson}
+        onNextLesson={handleNextLesson}
       />
 
       {/* Main Content */}

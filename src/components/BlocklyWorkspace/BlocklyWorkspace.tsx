@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 // @ts-ignore - Blockly doesn't have perfect TypeScript support
 import * as Blockly from 'blockly';
+// @ts-ignore
+import { javascriptGenerator, Order } from 'blockly/javascript';
 
 interface BlocklyWorkspaceProps {
   onCodeChange: (code: string) => void;
@@ -19,7 +21,6 @@ export const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 
     // Define custom blocks
     const defineCustomBlocks = () => {
-      // Move Forward Block
       Blockly.Blocks['move_forward'] = {
         init: function() {
           this.appendDummyInput()
@@ -32,7 +33,6 @@ export const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         }
       };
 
-      // Turn Right Block
       Blockly.Blocks['turn_right'] = {
         init: function() {
           this.appendDummyInput()
@@ -45,7 +45,6 @@ export const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         }
       };
 
-      // Turn Left Block
       Blockly.Blocks['turn_left'] = {
         init: function() {
           this.appendDummyInput()
@@ -59,20 +58,17 @@ export const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
       };
     };
 
-    // Define JavaScript generators
+    // Define JavaScript generators using the new API
     const defineJavaScriptGenerators = () => {
-      // @ts-ignore
-      Blockly.JavaScript['move_forward'] = function(block) {
+      javascriptGenerator.forBlock['move_forward'] = function() {
         return 'moveForward();\n';
       };
 
-      // @ts-ignore
-      Blockly.JavaScript['turn_right'] = function(block) {
+      javascriptGenerator.forBlock['turn_right'] = function() {
         return 'turnRight();\n';
       };
 
-      // @ts-ignore
-      Blockly.JavaScript['turn_left'] = function(block) {
+      javascriptGenerator.forBlock['turn_left'] = function() {
         return 'turnLeft();\n';
       };
     };
@@ -157,8 +153,7 @@ export const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
     // Listen for workspace changes
     const onWorkspaceChange = () => {
       try {
-        // @ts-ignore
-        const code = Blockly.JavaScript.workspaceToCode(ws);
+        const code = javascriptGenerator.workspaceToCode(ws);
         onCodeChange(code);
       } catch (error) {
         console.error('Error generating code:', error);

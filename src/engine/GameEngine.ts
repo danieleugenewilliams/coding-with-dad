@@ -1,9 +1,14 @@
-import { GameState, Robot, Goal, Obstacle } from '../types';
+import type { GameState, Robot, Goal, Obstacle } from '../types';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private state: GameState;
+  private initialRobot: Robot;
+  private initialGoal: Goal;
+  private initialObstacles: Obstacle[];
+  private commandQueue: string[];
+  private recording: boolean;
   private onStateChange: (state: GameState) => void;
   private onFeedback: (message: string, type: 'success' | 'error' | 'info' | 'hint') => void;
 
@@ -14,10 +19,17 @@ export class GameEngine {
     this.onStateChange = onStateChange;
     this.onFeedback = onFeedback;
 
+    // Store initial positions for reset
+    this.initialRobot = { x: 1, y: 1, direction: 0 };
+    this.initialGoal = { x: 4, y: 1 };
+    this.initialObstacles = [];
+    this.commandQueue = [];
+    this.recording = false;
+
     // Initialize game state
     this.state = {
-      robot: { x: 1, y: 1, direction: 0 },
-      goal: { x: 4, y: 1 },
+      robot: { ...this.initialRobot },
+      goal: { ...this.initialGoal },
       obstacles: [],
       gridSize: 8,
       cellSize: 50,
@@ -38,6 +50,11 @@ export class GameEngine {
   }
 
   public loadLevel(robot: Robot, goal: Goal, obstacles: Obstacle[] = []) {
+    // Store initial positions for reset
+    this.initialRobot = { ...robot };
+    this.initialGoal = { ...goal };
+    this.initialObstacles = obstacles.map(o => ({ ...o }));
+
     this.state = {
       ...this.state,
       robot: { ...robot },
@@ -54,13 +71,12 @@ export class GameEngine {
   }
 
   public reset() {
-    const { robot, goal, obstacles, gridSize, cellSize } = this.state;
     this.state = {
-      robot: { ...robot },
-      goal: { ...goal },
-      obstacles: [...obstacles],
-      gridSize,
-      cellSize,
+      robot: { ...this.initialRobot },
+      goal: { ...this.initialGoal },
+      obstacles: this.initialObstacles.map(o => ({ ...o })),
+      gridSize: this.state.gridSize,
+      cellSize: this.state.cellSize,
       isRunning: false,
       currentStep: 0,
       program: [],
@@ -99,12 +115,32 @@ export class GameEngine {
 
   public stepProgram(code: string) {
     if (!this.state.stepMode) {
-      // Initialize step mode
+      // Initialize step mode: run the program in recording mode to capture commands
+      this.reset();
+
+      this.commandQueue = [];
+      this.recording = true;
+      try {
+        eval(code);
+      } catch (error) {
+        this.recording = false;
+        this.onFeedback(`Error: ${(error as Error).message}`, 'error');
+        return;
+      }
+      this.recording = false;
+
+      // Reset robot back to start after recording
+      this.state.robot = { ...this.initialRobot };
       this.state.stepMode = true;
       this.state.currentStep = 0;
-      this.state.program = this.parseProgram(code);
-      this.reset();
-      this.onFeedback('Step mode: Click Step to execute one command at a time', 'info');
+      this.state.program = [...this.commandQueue];
+      this.onStateChange(this.state);
+      this.draw();
+
+      this.onFeedback(
+        `Step mode: ${this.state.program.length} commands. Click Step to execute one at a time.`,
+        'info'
+      );
       return;
     }
 
@@ -113,13 +149,12 @@ export class GameEngine {
       const command = this.state.program[this.state.currentStep];
 
       try {
-        eval(command);
+        this.executeCommand(command);
         this.state.currentStep++;
         this.onStateChange(this.state);
         this.draw();
 
         if (this.state.currentStep >= this.state.program.length) {
-          this.onFeedback('Program complete! Click Reset to try again.', 'success');
           this.checkGoalReached();
         } else {
           this.onFeedback(
@@ -134,6 +169,14 @@ export class GameEngine {
     }
   }
 
+  private executeCommand(command: string) {
+    switch (command) {
+      case 'moveForward': this.moveForward(); break;
+      case 'turnRight': this.turnRight(); break;
+      case 'turnLeft': this.turnLeft(); break;
+    }
+  }
+
   private setupMovementFunctions() {
     // Make movement functions globally available
     (window as any).moveForward = () => this.moveForward();
@@ -141,11 +184,12 @@ export class GameEngine {
     (window as any).turnLeft = () => this.turnLeft();
   }
 
-  private parseProgram(code: string): string[] {
-    return code.split('\n').filter(line => line.trim() && !line.trim().startsWith('//'));
-  }
-
   private moveForward() {
+    if (this.recording) {
+      this.commandQueue.push('moveForward');
+      // Still simulate the move to validate the program (e.g. detect wall hits)
+    }
+
     const directions = [
       { x: 0, y: -1 }, // North
       { x: 1, y: 0 },  // East
@@ -171,32 +215,49 @@ export class GameEngine {
     // Move robot
     this.state.robot.x = newX;
     this.state.robot.y = newY;
-    this.onStateChange(this.state);
-    this.draw();
 
-    // Add delay for animation if not in step mode
-    if (!this.state.stepMode) {
-      this.sleep(300);
+    if (!this.recording) {
+      this.onStateChange(this.state);
+      this.draw();
+
+      // Add delay for animation if not in step mode
+      if (!this.state.stepMode) {
+        this.sleep(300);
+      }
     }
   }
 
   private turnRight() {
-    this.state.robot.direction = ((this.state.robot.direction + 1) % 4) as 0 | 1 | 2 | 3;
-    this.onStateChange(this.state);
-    this.draw();
+    if (this.recording) {
+      this.commandQueue.push('turnRight');
+    }
 
-    if (!this.state.stepMode) {
-      this.sleep(200);
+    this.state.robot.direction = ((this.state.robot.direction + 1) % 4) as 0 | 1 | 2 | 3;
+
+    if (!this.recording) {
+      this.onStateChange(this.state);
+      this.draw();
+
+      if (!this.state.stepMode) {
+        this.sleep(200);
+      }
     }
   }
 
   private turnLeft() {
-    this.state.robot.direction = ((this.state.robot.direction + 3) % 4) as 0 | 1 | 2 | 3;
-    this.onStateChange(this.state);
-    this.draw();
+    if (this.recording) {
+      this.commandQueue.push('turnLeft');
+    }
 
-    if (!this.state.stepMode) {
-      this.sleep(200);
+    this.state.robot.direction = ((this.state.robot.direction + 3) % 4) as 0 | 1 | 2 | 3;
+
+    if (!this.recording) {
+      this.onStateChange(this.state);
+      this.draw();
+
+      if (!this.state.stepMode) {
+        this.sleep(200);
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { GameState } from '../../types';
+import type { GameState } from '../../types';
 
 interface GameCanvasProps {
   gameState: GameState;

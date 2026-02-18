@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lesson } from '../../types';
+import type { Lesson } from '../../types';
 
 interface InstructionsPanelProps {
   lesson: Lesson;

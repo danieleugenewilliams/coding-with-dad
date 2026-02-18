@@ -1,7 +1,7 @@
 # Technical Specification: Kids Coding Education Platform
 ## Project Overview
 
-**Project Name:** [Your Platform Name]  
+**Project Name:** Coding with Dad  
 **Target Launch:** 6 months from start  
 **Target Audience:** Children ages 7+ (reading level required)  
 **Business Model:** Subscription-based ($75-$125/month)  
@@ -16,77 +16,70 @@
 ### 1.1 Technology Stack
 
 **Frontend**
-- **Framework:** Rails 7+ with Hotwire (Turbo + Stimulus)
-- **Language:** Ruby + JavaScript (ES6+)
+- **Framework:** React 19 with TypeScript
+- **Build Tool:** Vite
 - **UI Library:** Tailwind CSS
-- **Block Editor:** Blockly (Google's visual programming library)
-- **State Management:** Stimulus controllers
-- **Animation:** CSS animations + Stimulus Animate
+- **Block Editor:** Blockly 12 (Google's visual programming library)
+- **State Management:** React hooks (useState, useRef, useCallback)
 
-**Backend**
-- **Framework:** Ruby on Rails 7+
-- **Database:** PostgreSQL
-- **Authentication:** Devise
-- **File Storage:** Active Storage with S3 or Digital Ocean Spaces
-- **Real-time:** Action Cable (for live progress updates)
-- **Background Jobs:** Sidekiq
+**Backend (Phase 1 — planned)**
+- **API:** Node.js or lightweight serverless functions (Lambda)
+- **Database:** PostgreSQL on AWS EC2 (self-managed, with RLS)
+- **Authentication:** JWT (JSON Web Tokens)
+- **File Storage:** AWS S3
+- **Payment Processing:** Stripe
 
 **Infrastructure**
-- **Hosting:** Render or Fly.io (Rails app)
-- **Database:** Managed PostgreSQL (Render/Fly.io/RDS)
-- **CDN:** CloudFront or Cloudflare
-- **Email:** SendGrid or Postmark
+- **Frontend Hosting:** AWS S3 + CloudFront (static site)
+- **Database:** PostgreSQL on AWS EC2
+- **CDN:** CloudFront
+- **Email:** SendGrid or SES
 - **Payment Processing:** Stripe
 
 **Development Tools**
 - **Code Editor:** VS Code with Claude Code integration
 - **Version Control:** Git + GitHub
-- **CI/CD:** GitHub Actions + Render/Fly.io auto-deploy
-- **Testing:** RSpec + Capybara (feature tests)
-- **Monitoring:** Honeybadger or Sentry
-- **Performance:** Bullet (N+1 queries), Rack Mini Profiler
+- **Deployment:** Custom local scripts (`scripts/deploy.sh`, `scripts/aws-setup.sh`)
+- **Testing:** Vitest + React Testing Library (planned)
+- **Monitoring:** Sentry or CloudWatch
 
 ### 1.2 Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Frontend Layer                       │
+│                    Frontend (React SPA)                       │
+│              Hosted on S3 + CloudFront CDN                   │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │   Student    │  │   Teacher    │  │    Parent    │      │
 │  │   Portal     │  │  Dashboard   │  │   Portal     │      │
-│  │  (Rails ERB/ │  │  (Rails ERB/ │  │  (Rails ERB/ │      │
-│  │   Hotwire)   │  │   Hotwire)   │  │   Hotwire)   │      │
+│  │  (React/TS)  │  │  (React/TS)  │  │  (React/TS)  │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │           │                │                 │               │
 │           └────────────────┴─────────────────┘               │
-│                            │                                 │
+│                            │ REST API (JWT auth)             │
 └────────────────────────────┼─────────────────────────────────┘
                              │
 ┌────────────────────────────┼─────────────────────────────────┐
-│                    Rails Controllers                          │
+│                    API Layer (Phase 1)                        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │  Users   │  │ Lessons  │  │ Projects │  │ Progress │    │
-│  │Controller│  │Controller│  │Controller│  │Controller│    │
+│  │  Auth    │  │ Lessons  │  │ Projects │  │ Progress │    │
+│  │  (JWT)   │  │   API    │  │   API    │  │   API    │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│                            │                                 │
-│  ┌─────────────────────────┼──────────────────────────┐     │
-│  │         Rails Models & Business Logic              │     │
-│  └─────────────────────────┼──────────────────────────┘     │
 └────────────────────────────┼─────────────────────────────────┘
                              │
 ┌────────────────────────────┼─────────────────────────────────┐
-│                    PostgreSQL Database                        │
+│              PostgreSQL on AWS EC2 (with RLS)                │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │  Tables  │  │  Indexes │  │  Foreign │  │ Sequences│    │
-│  │          │  │          │  │   Keys   │  │          │    │
+│  │  Tables  │  │  Indexes │  │  Foreign │  │   RLS    │    │
+│  │          │  │          │  │   Keys   │  │ Policies │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 └─────────────────────────────────────────────────────────────┘
                              │
 ┌────────────────────────────┼─────────────────────────────────┐
 │                   External Services                           │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │  Stripe  │  │ SendGrid │  │Honeybadger│ │ActiveStore│   │
-│  │ Payments │  │  Email   │  │   Logs   │  │(S3/Spaces)│   │
+│  │  Stripe  │  │ SendGrid │  │  Sentry  │  │  AWS S3  │    │
+│  │ Payments │  │  / SES   │  │   Logs   │  │  Storage │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -95,231 +88,207 @@
 
 ## 2. Database Schema
 
-### 2.1 Core Tables (Rails/ActiveRecord format)
+### 2.1 Core Tables (PostgreSQL with RLS)
 
-**users** (via Devise)
-```ruby
-# db/migrate/xxx_devise_create_users.rb
-create_table :users do |t|
-  t.string :email, null: false, default: ""
-  t.string :encrypted_password, null: false, default: ""
-  t.string :role, null: false, default: "student"
-  # Devise trackable
-  t.integer :sign_in_count, default: 0
-  t.datetime :current_sign_in_at
-  t.datetime :last_sign_in_at
-  t.string :current_sign_in_ip
-  t.string :last_sign_in_ip
-  
-  t.timestamps
-end
-
-add_index :users, :email, unique: true
-add_check_constraint :users, "role IN ('student', 'teacher', 'parent', 'admin')", name: 'role_check'
+**users**
+```sql
+CREATE TABLE users (
+  id            SERIAL PRIMARY KEY,
+  email         VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role          VARCHAR(20) NOT NULL DEFAULT 'student'
+                CHECK (role IN ('student', 'teacher', 'parent', 'admin')),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 **profiles**
-```ruby
-# db/migrate/xxx_create_profiles.rb
-create_table :profiles do |t|
-  t.references :user, null: false, foreign_key: true, index: { unique: true }
-  t.string :first_name, null: false
-  t.string :last_name, null: false
-  t.string :display_name
-  t.date :date_of_birth
-  t.string :avatar_url
-  t.string :parent_email
-  t.string :subscription_status
-  t.string :subscription_tier
-  t.string :stripe_customer_id
-  
-  t.timestamps
-end
-
-add_check_constraint :profiles, 
-  "subscription_status IN ('active', 'inactive', 'trial', 'cancelled')", 
-  name: 'subscription_status_check'
+```sql
+CREATE TABLE profiles (
+  id                  SERIAL PRIMARY KEY,
+  user_id             INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  first_name          VARCHAR(255) NOT NULL,
+  last_name           VARCHAR(255) NOT NULL,
+  display_name        VARCHAR(255),
+  date_of_birth       DATE,
+  avatar_url          VARCHAR(500),
+  parent_email        VARCHAR(255),
+  subscription_status VARCHAR(20)
+                      CHECK (subscription_status IN ('active', 'inactive', 'trial', 'cancelled')),
+  subscription_tier   VARCHAR(20),
+  stripe_customer_id  VARCHAR(255),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 **courses**
-```ruby
-# db/migrate/xxx_create_courses.rb
-create_table :courses do |t|
-  t.string :title, null: false
-  t.text :description
-  t.string :difficulty_level
-  t.string :age_range
-  t.integer :estimated_hours
-  t.string :thumbnail_url
-  t.boolean :is_published, default: false
-  t.integer :display_order
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE courses (
+  id               SERIAL PRIMARY KEY,
+  title            VARCHAR(255) NOT NULL,
+  description      TEXT,
+  difficulty_level VARCHAR(20)
+                   CHECK (difficulty_level IN ('beginner', 'intermediate', 'advanced')),
+  age_range        VARCHAR(20),
+  estimated_hours  INTEGER,
+  thumbnail_url    VARCHAR(500),
+  is_published     BOOLEAN NOT NULL DEFAULT FALSE,
+  display_order    INTEGER,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-add_check_constraint :courses, 
-  "difficulty_level IN ('beginner', 'intermediate', 'advanced')", 
-  name: 'difficulty_level_check'
-add_index :courses, :display_order
-add_index :courses, :is_published
+CREATE INDEX idx_courses_display_order ON courses(display_order);
+CREATE INDEX idx_courses_published ON courses(is_published);
 ```
 
 **lessons**
-```ruby
-# db/migrate/xxx_create_lessons.rb
-create_table :lessons do |t|
-  t.references :course, null: false, foreign_key: true
-  t.string :title, null: false
-  t.text :description
-  t.integer :lesson_number, null: false
-  t.string :lesson_type
-  t.text :instructions
-  t.jsonb :hints, default: []
-  t.jsonb :starter_blocks
-  t.jsonb :solution_blocks
-  t.jsonb :success_criteria
-  t.integer :estimated_minutes
-  t.string :thumbnail_url
-  t.boolean :is_published, default: false
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE lessons (
+  id               SERIAL PRIMARY KEY,
+  course_id        INTEGER NOT NULL REFERENCES courses(id),
+  title            VARCHAR(255) NOT NULL,
+  description      TEXT,
+  lesson_number    INTEGER NOT NULL,
+  lesson_type      VARCHAR(20)
+                   CHECK (lesson_type IN ('tutorial', 'challenge', 'project', 'quiz')),
+  instructions     TEXT,
+  hints            JSONB DEFAULT '[]',
+  starter_blocks   JSONB,
+  solution_blocks  JSONB,
+  success_criteria JSONB,
+  estimated_minutes INTEGER,
+  thumbnail_url    VARCHAR(500),
+  is_published     BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (course_id, lesson_number)
+);
 
-add_check_constraint :lessons, 
-  "lesson_type IN ('tutorial', 'challenge', 'project', 'quiz')", 
-  name: 'lesson_type_check'
-add_index :lessons, [:course_id, :lesson_number], unique: true
-add_index :lessons, :lesson_type
+CREATE INDEX idx_lessons_type ON lessons(lesson_type);
 ```
 
 **student_progresses**
-```ruby
-# db/migrate/xxx_create_student_progresses.rb
-create_table :student_progresses do |t|
-  t.references :student, null: false, foreign_key: { to_table: :users }
-  t.references :lesson, null: false, foreign_key: true
-  t.string :status, default: 'not_started'
-  t.integer :attempts, default: 0
-  t.jsonb :current_workspace
-  t.datetime :completion_time
-  t.integer :time_spent_seconds, default: 0
-  t.integer :hints_used, default: 0
-  t.integer :stars_earned
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE student_progresses (
+  id                 SERIAL PRIMARY KEY,
+  student_id         INTEGER NOT NULL REFERENCES users(id),
+  lesson_id          INTEGER NOT NULL REFERENCES lessons(id),
+  status             VARCHAR(20) NOT NULL DEFAULT 'not_started'
+                     CHECK (status IN ('not_started', 'in_progress', 'completed', 'needs_help')),
+  attempts           INTEGER NOT NULL DEFAULT 0,
+  current_workspace  JSONB,
+  completion_time    TIMESTAMPTZ,
+  time_spent_seconds INTEGER NOT NULL DEFAULT 0,
+  hints_used         INTEGER NOT NULL DEFAULT 0,
+  stars_earned       INTEGER CHECK (stars_earned >= 0 AND stars_earned <= 3),
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (student_id, lesson_id)
+);
 
-add_check_constraint :student_progresses, 
-  "status IN ('not_started', 'in_progress', 'completed', 'needs_help')", 
-  name: 'status_check'
-add_check_constraint :student_progresses, 
-  "stars_earned >= 0 AND stars_earned <= 3", 
-  name: 'stars_check'
-add_index :student_progresses, [:student_id, :lesson_id], unique: true
-add_index :student_progresses, :status
+CREATE INDEX idx_progress_status ON student_progresses(status);
 ```
 
 **projects**
-```ruby
-# db/migrate/xxx_create_projects.rb
-create_table :projects do |t|
-  t.references :student, null: false, foreign_key: { to_table: :users }
-  t.string :title, null: false
-  t.text :description
-  t.jsonb :workspace, null: false
-  t.string :thumbnail_url
-  t.boolean :is_public, default: false
-  t.integer :view_count, default: 0
-  t.integer :like_count, default: 0
-  t.integer :remix_count, default: 0
-  t.references :remixed_from, foreign_key: { to_table: :projects }
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE projects (
+  id              SERIAL PRIMARY KEY,
+  student_id      INTEGER NOT NULL REFERENCES users(id),
+  title           VARCHAR(255) NOT NULL,
+  description     TEXT,
+  workspace       JSONB NOT NULL,
+  thumbnail_url   VARCHAR(500),
+  is_public       BOOLEAN NOT NULL DEFAULT FALSE,
+  view_count      INTEGER NOT NULL DEFAULT 0,
+  like_count      INTEGER NOT NULL DEFAULT 0,
+  remix_count     INTEGER NOT NULL DEFAULT 0,
+  remixed_from_id INTEGER REFERENCES projects(id),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-add_index :projects, :student_id
-add_index :projects, :is_public, where: 'is_public = true'
-add_index :projects, :created_at
+CREATE INDEX idx_projects_student ON projects(student_id);
+CREATE INDEX idx_projects_public ON projects(is_public) WHERE is_public = TRUE;
+CREATE INDEX idx_projects_created ON projects(created_at);
 ```
 
 **achievements**
-```ruby
-# db/migrate/xxx_create_achievements.rb
-create_table :achievements do |t|
-  t.string :name, null: false
-  t.text :description
-  t.string :badge_icon_url
-  t.jsonb :criteria
-  t.integer :points, default: 0
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE achievements (
+  id             SERIAL PRIMARY KEY,
+  name           VARCHAR(255) NOT NULL,
+  description    TEXT,
+  badge_icon_url VARCHAR(500),
+  criteria       JSONB,
+  points         INTEGER NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 **student_achievements**
-```ruby
-# db/migrate/xxx_create_student_achievements.rb
-create_table :student_achievements do |t|
-  t.references :student, null: false, foreign_key: { to_table: :users }
-  t.references :achievement, null: false, foreign_key: true
-  t.datetime :earned_at, default: -> { 'CURRENT_TIMESTAMP' }
-  
-  t.timestamps
-end
-
-add_index :student_achievements, [:student_id, :achievement_id], unique: true
+```sql
+CREATE TABLE student_achievements (
+  id             SERIAL PRIMARY KEY,
+  student_id     INTEGER NOT NULL REFERENCES users(id),
+  achievement_id INTEGER NOT NULL REFERENCES achievements(id),
+  earned_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (student_id, achievement_id)
+);
 ```
 
 **classrooms**
-```ruby
-# db/migrate/xxx_create_classrooms.rb
-create_table :classrooms do |t|
-  t.references :teacher, null: false, foreign_key: { to_table: :users }
-  t.string :name, null: false
-  t.text :description
-  t.string :join_code, null: false
-  t.boolean :is_active, default: true
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE classrooms (
+  id          SERIAL PRIMARY KEY,
+  teacher_id  INTEGER NOT NULL REFERENCES users(id),
+  name        VARCHAR(255) NOT NULL,
+  description TEXT,
+  join_code   VARCHAR(20) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-add_index :classrooms, :join_code, unique: true
-add_index :classrooms, :teacher_id
+CREATE INDEX idx_classrooms_teacher ON classrooms(teacher_id);
 ```
 
 **classroom_students** (join table)
-```ruby
-# db/migrate/xxx_create_classroom_students.rb
-create_table :classroom_students do |t|
-  t.references :classroom, null: false, foreign_key: true
-  t.references :student, null: false, foreign_key: { to_table: :users }
-  t.datetime :joined_at, default: -> { 'CURRENT_TIMESTAMP' }
-  
-  t.timestamps
-end
-
-add_index :classroom_students, [:classroom_id, :student_id], unique: true
+```sql
+CREATE TABLE classroom_students (
+  id           SERIAL PRIMARY KEY,
+  classroom_id INTEGER NOT NULL REFERENCES classrooms(id),
+  student_id   INTEGER NOT NULL REFERENCES users(id),
+  joined_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (classroom_id, student_id)
+);
 ```
 
 **subscriptions**
-```ruby
-# db/migrate/xxx_create_subscriptions.rb
-create_table :subscriptions do |t|
-  t.references :user, null: false, foreign_key: true
-  t.string :stripe_subscription_id, null: false
-  t.string :status, null: false
-  t.string :plan_id, null: false
-  t.datetime :current_period_start
-  t.datetime :current_period_end
-  t.boolean :cancel_at_period_end, default: false
-  t.datetime :cancelled_at
-  
-  t.timestamps
-end
+```sql
+CREATE TABLE subscriptions (
+  id                     SERIAL PRIMARY KEY,
+  user_id                INTEGER NOT NULL REFERENCES users(id),
+  stripe_subscription_id VARCHAR(255) NOT NULL UNIQUE,
+  status                 VARCHAR(20) NOT NULL,
+  plan_id                VARCHAR(255) NOT NULL,
+  current_period_start   TIMESTAMPTZ,
+  current_period_end     TIMESTAMPTZ,
+  cancel_at_period_end   BOOLEAN NOT NULL DEFAULT FALSE,
+  cancelled_at           TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-add_index :subscriptions, :stripe_subscription_id, unique: true
-add_index :subscriptions, :user_id
-add_index :subscriptions, :status
+CREATE INDEX idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX idx_subscriptions_status ON subscriptions(status);
 ```
 
 ---
@@ -522,80 +491,69 @@ add_index :subscriptions, :status
 
 ---
 
-## 5. API Endpoints (Rails RESTful Routes)
+## 5. API Endpoints (REST)
 
-### 5.1 Authentication (Devise)
-```ruby
-# config/routes.rb
-devise_for :users, controllers: {
-  sessions: 'users/sessions',
-  registrations: 'users/registrations',
-  passwords: 'users/passwords'
-}
+### 5.1 Authentication (JWT)
+```
+POST   /api/auth/register          # Create account
+POST   /api/auth/login             # Login, returns JWT
+POST   /api/auth/refresh           # Refresh JWT token
+POST   /api/auth/forgot-password   # Request password reset
+POST   /api/auth/reset-password    # Reset password with token
 ```
 
 ### 5.2 Courses & Lessons
-```ruby
-resources :courses, only: [:index, :show] do
-  resources :lessons, only: [:index, :show] do
-    member do
-      post :submit
-      post :save_progress
-    end
-  end
-end
+```
+GET    /api/courses                # List all courses
+GET    /api/courses/:id            # Get course details
+GET    /api/courses/:id/lessons    # List lessons in course
+GET    /api/lessons/:id            # Get lesson details
+POST   /api/lessons/:id/submit     # Submit lesson solution
+POST   /api/lessons/:id/progress   # Save progress (auto-save)
 ```
 
 ### 5.3 Student Progress
-```ruby
-namespace :students do
-  resource :progress, only: [:show]
-  resources :student_progresses, only: [:index, :show, :update]
-end
+```
+GET    /api/students/me/progress          # Current user's progress
+GET    /api/students/me/progress/:lessonId # Progress for specific lesson
+PUT    /api/students/me/progress/:lessonId # Update progress
 ```
 
 ### 5.4 Projects
-```ruby
-resources :projects do
-  member do
-    post :remix
-    post :like
-    post :publish
-  end
-  collection do
-    get :public_gallery
-  end
-end
+```
+GET    /api/projects                # List user's projects
+POST   /api/projects                # Create project
+GET    /api/projects/:id            # Get project
+PUT    /api/projects/:id            # Update project
+DELETE /api/projects/:id            # Delete project
+POST   /api/projects/:id/remix      # Remix a project
+POST   /api/projects/:id/like       # Like a project
+POST   /api/projects/:id/publish    # Publish project
+GET    /api/projects/gallery         # Public gallery
 ```
 
 ### 5.5 Achievements
-```ruby
-resources :achievements, only: [:index, :show]
-namespace :students do
-  resources :achievements, only: [:index]
-end
+```
+GET    /api/achievements             # List all achievements
+GET    /api/students/me/achievements # Current user's earned achievements
 ```
 
 ### 5.6 Classrooms
-```ruby
-resources :classrooms do
-  member do
-    post :join
-    get :students
-    get :progress_report
-  end
-  resources :assignments, only: [:create, :destroy]
-end
+```
+GET    /api/classrooms               # List classrooms (teacher)
+POST   /api/classrooms               # Create classroom
+GET    /api/classrooms/:id           # Get classroom details
+POST   /api/classrooms/:id/join      # Join with code (student)
+GET    /api/classrooms/:id/students  # List students in classroom
+GET    /api/classrooms/:id/progress  # Class progress report
 ```
 
 ### 5.7 Subscriptions (Stripe)
-```ruby
-namespace :subscriptions do
-  post :create_checkout_session
-  post :webhook
-  get :portal_session
-  post :cancel
-end
+```
+POST   /api/subscriptions/checkout   # Create Stripe checkout session
+POST   /api/subscriptions/webhook    # Stripe webhook handler
+GET    /api/subscriptions/portal     # Get Stripe portal session URL
+POST   /api/subscriptions/cancel     # Cancel subscription
 ```
 
 ---
@@ -603,25 +561,25 @@ end
 ## 6. Security Considerations
 
 ### 6.1 Authentication & Authorization
-- Devise with strong password requirements
-- CanCanCan or Pundit for authorization
-- Role-based access control (RBAC)
+- JWT-based authentication with refresh tokens
+- Role-based access control (RBAC) enforced at API and database (RLS) levels
+- PostgreSQL Row-Level Security policies per user role
 - Student accounts cannot access other students' data
 - Teachers can only access their assigned classrooms
 - Parents can only access their children's accounts
-- Strong parameters in controllers
+- Input validation on all API endpoints
 
 ### 6.2 Content Security
 - Sandboxed code execution (no access to DOM or external resources)
-- Rails sanitization helpers for user-generated content
-- Rack::Attack for rate limiting
+- Input sanitization for user-generated content
+- API rate limiting
 - CORS configuration for API endpoints
-- CSP (Content Security Policy) headers
+- CSP (Content Security Policy) headers on S3/CloudFront
 
 ### 6.3 Data Privacy
 - COPPA compliance for children under 13
 - Parental consent workflow
-- Data encryption at rest (Rails encrypted attributes)
+- Data encryption at rest (PostgreSQL pgcrypto / AWS encryption)
 - SSL/TLS for all connections
 - Minimal data collection
 - Clear privacy policy
@@ -634,90 +592,57 @@ end
 - Webhook signature verification
 - Secure checkout flow with Stripe Checkout/Payment Links
 
-### 6.5 Rails-Specific Security
+### 6.5 Application Security
 - Protection against SQL injection (use parameterized queries)
-- CSRF protection enabled (Rails default)
-- XSS protection with Rails sanitization
-- Mass assignment protection with strong parameters
-- Secure session storage
-- Regular gem updates (bundle audit)
+- XSS protection via React's default escaping + CSP headers
+- API input validation and sanitization
+- Secure JWT storage (httpOnly cookies or secure storage)
+- Regular dependency updates (npm audit)
 
 ---
 
 ## 7. Development Phases
 
-### Phase 0: Blockly Prototype & Validation (Weeks 1-3)
+### Phase 0: Blockly Prototype & Validation (Weeks 1-3) — COMPLETE ✅
 **Goal:** Build a working Blockly prototype to validate the core learning experience before investing in full application development.
 
-**Deliverables:**
-- Standalone HTML page with Blockly workspace
-- 3-5 sample puzzles/lessons demonstrating different concepts
-- Block execution engine with visual feedback
-- Success criteria validation system
-- Demo-able prototype for user testing
+**Outcome:** Prototype built and validated. Two versions created:
+1. Standalone HTML/JS/CSS prototype (archived to `docs/archive/prototype/`)
+2. React/TypeScript/Vite prototype (promoted to main app)
 
-**Tasks:**
-1. **Week 1: Basic Blockly Setup**
-   - Create static HTML page with Blockly
-   - Configure custom block toolbox (Motion, Loops, Events)
-   - Build simple 2D canvas/grid for visual output
-   - Implement basic "Run" button functionality
+**Delivered:**
+- ✅ React SPA with Blockly 12 workspace integration
+- ✅ 5 lesson definitions progressing from basic movement to nested loops
+- ✅ Game engine with canvas rendering, robot movement, goal detection
+- ✅ Run, Step (record-and-replay), and Reset controls
+- ✅ Lesson navigation (prev/next)
+- ✅ Hint system with progressive disclosure
+- ✅ Code generation view (Show Code toggle)
+- ✅ Tailwind CSS styling with responsive layout
 
-2. **Week 2: Execution Engine & Game Logic**
-   - Build JavaScript interpreter for blocks
-   - Create character/sprite system
-   - Implement movement and basic commands
-   - Add visual feedback (animations, highlights)
-   - Create 2-3 simple sequencing puzzles
-
-3. **Week 3: Validation & User Testing**
-   - Add success criteria checking
-   - Build hint system
-   - Create 2 more advanced puzzles (loops, conditionals)
-   - Polish UI and animations
-   - Test with 3-5 kids (friends/family)
-   - Gather feedback and iterate
-
-**Success Criteria:**
-- ✅ Kids can complete puzzles without assistance
-- ✅ Clear visual feedback on correct/incorrect solutions
-- ✅ Engaging and fun experience
-- ✅ Technical feasibility confirmed
-- ✅ Ready to build full application
-
-**Technology:**
-- Pure HTML/CSS/JavaScript (no framework yet)
-- Blockly CDN
-- Canvas API or simple HTML/CSS grid
-- Can be hosted on GitHub Pages for easy sharing
-
-**Decision Point:** After Phase 0, decide whether to:
-- A) Proceed with full Rails app development (if prototype validates well)
-- B) Iterate more on learning mechanics
-- C) Pivot to different approach
+**Decision:** Proceeding with React + TypeScript + Vite stack (not Rails). Frontend will be hosted on S3 with CloudFront. Backend API and PostgreSQL on AWS.
 
 ---
 
-### Phase 1: Rails Foundation (Weeks 4-7)
-**Note:** Only begin if Phase 0 validates successfully!
+### Phase 1: Application Foundation (Weeks 4-7)
+**Note:** Phase 0 validated successfully. Proceeding with React/TypeScript stack.
 
 **Deliverables:**
-- Rails 7 application scaffolded
-- Database schema implemented
-- Authentication system (Devise)
-- Basic UI framework (Tailwind)
-- Blockly integrated into Rails app
+- AWS infrastructure set up (S3, CloudFront, EC2 for PostgreSQL)
+- PostgreSQL database with schema and RLS policies
+- JWT authentication system
+- REST API for core entities
+- CI/CD pipeline (GitHub Actions → S3 deploy)
 
 **Tasks:**
-- Initialize Rails 7 project
-- Set up PostgreSQL database
-- Configure Devise for authentication
-- Install and configure Tailwind CSS
-- Create User, Profile, Course, Lesson models
-- Implement database migrations
-- Set up basic layout and navigation
-- Port Blockly prototype into Rails views
-- Create lessons controller and views
+- Set up AWS infrastructure via `scripts/aws-setup.sh` (S3, CloudFront, ACM, DNS)
+- Create deployment script `scripts/deploy.sh` (build, S3 sync, CloudFront invalidation)
+- Set up PostgreSQL on AWS EC2 with RLS enabled
+- Implement database schema (users, profiles, courses, lessons, progress)
+- Build JWT authentication (register, login, refresh, password reset)
+- Create REST API endpoints for courses and lessons
+- Connect React frontend to API
+- Implement user registration and login flows
 
 ### Phase 2: Core Learning Experience (Weeks 8-13)
 **Deliverables:**
@@ -728,13 +653,13 @@ end
 - Hint and help system
 
 **Tasks:**
-- Build lesson player view with Hotwire
-- Implement block execution engine (ported from prototype)
+- Build lesson player with course/lesson data from API
+- Enhance block execution engine (from prototype)
 - Create success criteria evaluation system
 - Build course browsing interface
-- Develop student progress tracking
-- Implement auto-save with Action Cable
-- Add hint system
+- Develop student progress tracking (API + database)
+- Implement auto-save via API
+- Enhance hint system
 - Write and test first full course content
 - Polish UI/UX based on prototype learnings
 
@@ -747,10 +672,10 @@ end
 
 **Tasks:**
 - Build full Blockly workspace environment
-- Implement project CRUD operations
+- Implement project CRUD operations via API
 - Create project gallery UI
 - Add sharing and remix features
-- Implement project storage (Active Storage)
+- Implement project storage (S3)
 - Add asset library
 
 ### Phase 4: Engagement & Gamification (Weeks 18-21)
@@ -762,7 +687,7 @@ end
 
 **Tasks:**
 - Implement Achievement model and logic
-- Build achievement notification system (Turbo Streams)
+- Build achievement notification system
 - Create badge design assets
 - Develop student stats dashboard
 - Add optional leaderboard
@@ -775,11 +700,11 @@ end
 - Progress reporting
 
 **Tasks:**
-- Build teacher dashboard views
-- Implement classroom CRUD
+- Build teacher dashboard views in React
+- Implement classroom CRUD via API
 - Create progress monitoring views
 - Build parent portal
-- Develop reporting system with PDF exports
+- Develop reporting system
 
 ### Phase 6: Polish & Launch Prep (Weeks 26-29)
 **Deliverables:**
@@ -790,10 +715,10 @@ end
 - Beta launch!
 
 **Tasks:**
-- Integrate Stripe with Rails
+- Integrate Stripe with API
 - Implement subscription management
-- Comprehensive RSpec test suite
-- Performance optimization (N+1 queries, caching)
+- Comprehensive test suite (Vitest + React Testing Library)
+- Performance optimization (caching, lazy loading)
 - Create help documentation
 - Build landing page
 - Create onboarding tutorials
@@ -955,7 +880,7 @@ Each lesson includes:
 - Skill progression tracking
 
 ### 11.2 Analytics Implementation
-- Vercel Analytics for web vitals
+- CloudWatch or Plausible for web vitals
 - Custom events tracked in database
 - Weekly automated reports
 - Teacher dashboards with real-time data
@@ -1009,7 +934,7 @@ Each lesson includes:
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
 | Blockly performance issues with complex projects | High | Medium | Implement workspace size limits, optimization |
-| Database scaling challenges | Medium | Low | Use Supabase auto-scaling, optimize queries |
+| Database scaling challenges | Medium | Low | Optimize queries, add read replicas on AWS if needed |
 | Security vulnerability | High | Low | Regular security audits, penetration testing |
 | Browser compatibility issues | Medium | Medium | Extensive cross-browser testing |
 
@@ -1082,7 +1007,7 @@ Each lesson includes:
 - Security best practices
 
 ### 15.3 Customer Support
-- Email support (support@yourdomain.com)
+- Email support (support@codingwithdad.TBD)
 - In-app help center
 - Community forum (optional)
 - Monthly office hours (Zoom)
@@ -1094,21 +1019,23 @@ Each lesson includes:
 
 ### Appendix A: Glossary
 - **Blockly:** Google's visual programming editor
-- **RLS:** Row-level security (database access control)
+- **RLS:** Row-Level Security — PostgreSQL feature that restricts which rows a user can access based on policies
+- **JWT:** JSON Web Token — stateless authentication token used for API access
 - **Workspace:** The area where students drag and connect blocks
 - **Remix:** Creating a new project based on an existing one
-- **JWT:** JSON Web Token (authentication mechanism)
+- **SPA:** Single-Page Application — frontend architecture used by this project (React)
 
 ### Appendix B: Resources
 - **Blockly Documentation:** https://developers.google.com/blockly
-- **Rails Guides:** https://guides.rubyonrails.org
-- **Hotwire (Turbo/Stimulus):** https://hotwired.dev
-- **Devise Authentication:** https://github.com/heartcombo/devise
-- **Stripe Ruby Gem:** https://github.com/stripe/stripe-ruby
-- **Code.org Open Source:** https://github.com/code-dot-org
+- **React Documentation:** https://react.dev
+- **Vite Documentation:** https://vite.dev
+- **TypeScript Documentation:** https://www.typescriptlang.org/docs
 - **Tailwind CSS:** https://tailwindcss.com
-- **RSpec Testing:** https://rspec.info
-- **Rails Security Guide:** https://guides.rubyonrails.org/security.html
+- **PostgreSQL RLS:** https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+- **JWT Introduction:** https://jwt.io/introduction
+- **Stripe API:** https://stripe.com/docs/api
+- **AWS S3 Static Hosting:** https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html
+- **Code.org Open Source:** https://github.com/code-dot-org
 
 ### Appendix C: Design System
 - Primary Color: Teal (#14B8A6)
@@ -1123,41 +1050,41 @@ Each lesson includes:
 
 ## Next Steps
 
-### Immediate Actions (This Week):
+### Phase 0 Complete — Proceeding to Phase 1
 
-1. **Start with Phase 0: Blockly Prototype**
-   - Create a simple HTML file with Blockly
-   - Build 1-2 sample puzzles
-   - Get something working you can show to kids
+**Domain:**
+- `codingwithdad.com` is taken (registered 2015, GoDaddy)
+- Available alternatives: `code-with-dad.com`, `codingwithdad.dev`, `codingwithdad.io`, `codingwithdad.app`, `codingwithdad.co`
+- **Action:** Register preferred domain
 
-2. **User Testing Plan**
-   - Identify 3-5 kids (ages 7-10) to test with
-   - Prepare observation checklist
-   - Schedule testing sessions
+### Immediate Actions (Phase 1 Kickoff):
 
-3. **Gather Feedback**
-   - Watch how kids interact with blocks
-   - Note confusion points
-   - Measure engagement and fun factor
+1. **Register domain** and configure DNS
+2. **Set up AWS infrastructure**
+   - S3 bucket + CloudFront for frontend hosting
+   - EC2 instance with PostgreSQL
+   - IAM roles and security groups
+3. **Set up deployment scripts**
+   - `scripts/aws-setup.sh`: one-time infrastructure provisioning
+   - `scripts/deploy.sh`: build + S3 sync + CloudFront invalidation
+4. **Design and implement database schema**
+   - Create tables with RLS policies
+   - Seed initial course/lesson data
+5. **Build JWT authentication API**
+   - Register, login, refresh, password reset endpoints
+6. **Connect React frontend to API**
+   - Auth flows (login/register screens)
+   - Lesson data loading from API
 
-### After Prototype Validation:
+### Repository:
+- **GitHub:** https://github.com/danieleugenewilliams/coding-with-dad
+- **Stack:** React 19 + TypeScript + Vite + Tailwind CSS
+- **Directory:** App source in `src/`, docs in `docs/`, archived prototype in `docs/archive/`
 
-4. **Review and refine** this technical specification based on prototype learnings
-5. **Set up Rails development environment** with Claude Code
-6. **Create project repository** and initialize Rails app
-7. **Begin Phase 1 development** (Foundation)
-8. **Schedule weekly progress reviews**
-9. **Start curriculum development** in parallel with technical work
-
-**Estimated Timeline:**
-- Phase 0 (Prototype): 3 weeks
-- Phases 1-6 (Full Development): 26 weeks
-- **Total: 29 weeks (~6.5 months)**
-
-**Recommended Approach:**
-- Spend the first 3 weeks proving the concept works
-- Don't invest in infrastructure until the learning experience is validated
-- Use prototype feedback to inform all subsequent design decisions
+**Estimated Remaining Timeline:**
+- Phase 1 (Foundation): 4 weeks
+- Phases 2-6 (Features): 22 weeks
+- **Total remaining: ~26 weeks (~6 months)**
 
 ---
 
